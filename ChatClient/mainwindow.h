@@ -20,9 +20,7 @@ class MainWindow : public QMainWindow {
 
  private slots:
   void on_loginButton_clicked();
-
   void on_sayButton_clicked();
-
   void on_logoutButton_clicked();
   void connectedServer();
   void messageReceived(const QString &sender, const QString &text);
@@ -32,6 +30,10 @@ class MainWindow : public QMainWindow {
   void userListReceived(const QStringList &list);
 
   void on_userListWidget_currentTextChanged(const QString &currentText);
+
+  void on_registerBtn_clicked();
+
+  void on_loginButton_3_clicked();
 
  private:
   Ui::MainWindow *ui;

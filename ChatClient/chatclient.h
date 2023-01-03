@@ -4,24 +4,26 @@
 #include <QObject>
 #include <QTcpSocket>
 
-class ChatClient : public QObject {
+class ChatClient : public QObject
+{
   Q_OBJECT
- public:
+public:
   explicit ChatClient(QObject *parent = nullptr);
 
- signals:
+signals:
   void connected();
   void messageReceived(const QString &text);
   void jsonReceived(const QJsonObject &docObj);
 
- private:
+private:
   QTcpSocket *m_clientSocket;
- public slots:
+public slots:
   void onReadyRead();
   void sendMessage(const QString &text, const QString &type = "message",
                    const QString &to = "");
+  void loginOrRegister(const QString &username, const QString &pwd, const QString &type = "login");
   void connectToServer(const QHostAddress &address, quint16 port);
   void disconnectFromHost();
 };
 
-#endif  // CHATCLIENT_H
+#endif // CHATCLIENT_H

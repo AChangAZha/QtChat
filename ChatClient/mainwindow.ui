@@ -31,7 +31,7 @@
     <item>
      <widget class="QStackedWidget" name="stackedWidget">
       <property name="currentIndex">
-       <number>1</number>
+       <number>2</number>
       </property>
       <widget class="QWidget" name="chatPage">
        <layout class="QGridLayout" name="gridLayout_3">
@@ -73,15 +73,15 @@
       </widget>
       <widget class="QWidget" name="loginPage">
        <layout class="QGridLayout" name="gridLayout_2">
-        <item row="0" column="1">
-         <spacer name="verticalSpacer_2">
+        <item row="1" column="2">
+         <spacer name="horizontalSpacer">
           <property name="orientation">
-           <enum>Qt::Vertical</enum>
+           <enum>Qt::Horizontal</enum>
           </property>
           <property name="sizeHint" stdset="0">
            <size>
-            <width>20</width>
-            <height>95</height>
+            <width>226</width>
+            <height>20</height>
            </size>
           </property>
          </spacer>
@@ -95,6 +95,32 @@
            <size>
             <width>227</width>
             <height>20</height>
+           </size>
+          </property>
+         </spacer>
+        </item>
+        <item row="2" column="1">
+         <spacer name="verticalSpacer_3">
+          <property name="orientation">
+           <enum>Qt::Vertical</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>20</width>
+            <height>95</height>
+           </size>
+          </property>
+         </spacer>
+        </item>
+        <item row="0" column="1">
+         <spacer name="verticalSpacer_2">
+          <property name="orientation">
+           <enum>Qt::Vertical</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>20</width>
+            <height>95</height>
            </size>
           </property>
          </spacer>
@@ -150,6 +176,24 @@ background-color: rgb(238, 238, 236);</string>
                </property>
               </widget>
              </item>
+             <item row="2" column="0">
+              <widget class="QLabel" name="label_4">
+               <property name="text">
+                <string>密码</string>
+               </property>
+              </widget>
+             </item>
+             <item row="2" column="1">
+              <widget class="QLineEdit" name="passwordEdit">
+               <property name="styleSheet">
+                <string notr="true">border:2px groove gray;border-radius:10px;
+background-color: rgb(238, 238, 236);</string>
+               </property>
+               <property name="text">
+                <string/>
+               </property>
+              </widget>
+             </item>
             </layout>
            </item>
            <item>
@@ -176,7 +220,19 @@ background-color: rgb(238, 238, 236);</string>
 background-color: rgb(136, 138, 133);</string>
              </property>
              <property name="text">
-              <string>登录聊天室</string>
+              <string>登录</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QPushButton" name="loginButton_3">
+             <property name="styleSheet">
+              <string notr="true">border-radius:10px;
+
+background-color: rgb(136, 138, 133);</string>
+             </property>
+             <property name="text">
+              <string>注册</string>
              </property>
             </widget>
            </item>
@@ -193,33 +249,65 @@ background-color: rgb(136, 138, 133);</string>
           </layout>
          </widget>
         </item>
-        <item row="1" column="2">
-         <spacer name="horizontalSpacer">
-          <property name="orientation">
-           <enum>Qt::Horizontal</enum>
-          </property>
-          <property name="sizeHint" stdset="0">
-           <size>
-            <width>226</width>
-            <height>20</height>
-           </size>
-          </property>
-         </spacer>
-        </item>
-        <item row="2" column="1">
-         <spacer name="verticalSpacer_3">
-          <property name="orientation">
-           <enum>Qt::Vertical</enum>
-          </property>
-          <property name="sizeHint" stdset="0">
-           <size>
-            <width>20</width>
-            <height>95</height>
-           </size>
-          </property>
-         </spacer>
-        </item>
        </layout>
+      </widget>
+      <widget class="QWidget" name="registerPage">
+       <widget class="QPushButton" name="registerBtn">
+        <property name="geometry">
+         <rect>
+          <x>400</x>
+          <y>250</y>
+          <width>80</width>
+          <height>23</height>
+         </rect>
+        </property>
+        <property name="text">
+         <string>注册</string>
+        </property>
+       </widget>
+       <widget class="QLineEdit" name="username">
+        <property name="geometry">
+         <rect>
+          <x>290</x>
+          <y>130</y>
+          <width>113</width>
+          <height>23</height>
+         </rect>
+        </property>
+       </widget>
+       <widget class="QLineEdit" name="password">
+        <property name="geometry">
+         <rect>
+          <x>300</x>
+          <y>160</y>
+          <width>113</width>
+          <height>23</height>
+         </rect>
+        </property>
+       </widget>
+       <widget class="QLineEdit" name="rePassword">
+        <property name="geometry">
+         <rect>
+          <x>310</x>
+          <y>190</y>
+          <width>113</width>
+          <height>23</height>
+         </rect>
+        </property>
+       </widget>
+       <widget class="QLabel" name="errMsg">
+        <property name="geometry">
+         <rect>
+          <x>340</x>
+          <y>220</y>
+          <width>59</width>
+          <height>15</height>
+         </rect>
+        </property>
+        <property name="text">
+         <string>TextLabel</string>
+        </property>
+       </widget>
       </widget>
      </widget>
     </item>

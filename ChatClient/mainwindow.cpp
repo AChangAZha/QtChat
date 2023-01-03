@@ -40,7 +40,8 @@ void MainWindow::on_logoutButton_clicked() {
 
 void MainWindow::connectedServer() {
   ui->stackedWidget->setCurrentWidget(ui->chatPage);
-  m_chatClient->sendMessage(ui->usernameEdit->text(), "login");
+  m_chatClient->loginOrRegister(ui->usernameEdit->text(),
+                                ui->passwordEdit->text());
 }
 
 void MainWindow::messageReceived(const QString &sender, const QString &text) {
@@ -72,7 +73,22 @@ void MainWindow::jsonReceived(const QJsonObject &docObj) {
     userListReceived(userlistVal.toVariant().toStringList());
   } else if (typeVal.toString().compare("logout", Qt::CaseInsensitive) == 0) {
     on_logoutButton_clicked();
-    ui->msg->setText("用户名已被使用");
+    ui->msg->setText("登录失败");
+  } else if (typeVal.toString().compare("login", Qt::CaseInsensitive) == 0) {
+    on_logoutButton_clicked();
+    const QJsonValue msgVal = docObj.value("text");
+    ui->stackedWidget->setCurrentWidget(ui->loginPage);
+    ui->msg->setText(msgVal.toString());
+  } else if (typeVal.toString().compare("register", Qt::CaseInsensitive) == 0) {
+    on_logoutButton_clicked();
+    const QJsonValue msgVal = docObj.value("text");
+    if (msgVal.toString() == "Register successful") {
+      ui->msg->setText(msgVal.toString());
+      ui->stackedWidget->setCurrentWidget(ui->loginPage);
+      ui->usernameEdit->setText(ui->username->text());
+    } else {
+      ui->errMsg->setText(msgVal.toString());
+    }
   }
 }
 
@@ -100,4 +116,15 @@ void MainWindow::on_userListWidget_currentTextChanged(
     ui->sayButton->setText("发送");
   } else
     ui->sayButton->setText("To " + currentText);
+}
+
+void MainWindow::on_registerBtn_clicked() {
+  m_chatClient->connectToServer(QHostAddress(ui->serverEdit->text()), 1967);
+
+  m_chatClient->loginOrRegister(ui->username->text(), ui->password->text(),
+                                "register");
+}
+
+void MainWindow::on_loginButton_3_clicked() {
+  ui->stackedWidget->setCurrentWidget(ui->registerPage);
 }

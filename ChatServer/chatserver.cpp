@@ -4,6 +4,7 @@
 #include <QJsonObject>
 #include <QJsonValue>
 
+#include "idatabase.h"
 #include "serverworker.h"
 ChatServer::ChatServer(QObject *parent) : QTcpServer(parent) {}
 
@@ -51,20 +52,35 @@ void ChatServer::jsonReceived(ServerWorker *sender, const QJsonObject &docObj) {
       }
     }
   } else if (typeVal.toString().compare("login", Qt::CaseInsensitive) == 0) {
-    const QJsonValue usernameVal = docObj.value("text");
-    if (usernameVal.isNull() || !usernameVal.isString()) return;
+    const QJsonValue idVal = docObj.value("text");
+    const QJsonValue passwordVal = docObj.value("pwd");
+    if (idVal.isNull() || !idVal.isString() || passwordVal.isNull() ||
+        !passwordVal.isString())
+      return;
     for (ServerWorker *worker : m_clients) {
-      if (worker->userName().compare(usernameVal.toString()) == 0) {
+      // 用户已登录
+      if (worker->userName().compare(idVal.toString()) == 0) {
         QJsonObject logout;
         logout["type"] = "logout";
         sender->sendJson(logout);
         return;
       }
     }
-    sender->setUserName(usernameVal.toString());
+    QString msg = IDatabase::getInstance().userLogin(idVal.toString(),
+                                                     passwordVal.toString());
+    if (msg.compare("Login successful") != 0)  // 登录失败
+    {
+      QJsonObject login;
+      login["type"] = "login";
+      login["text"] = msg;
+      sender->sendJson(login);
+      return;
+    }
+    QString username = IDatabase::getInstance().getUserName(idVal.toString());
+    sender->setUserName(username);
     QJsonObject connectedMessage;
     connectedMessage["type"] = "newuser";
-    connectedMessage["username"] = usernameVal.toString();
+    connectedMessage["username"] = username;
     broadcast(connectedMessage, sender);
     QJsonObject userListMessage;
     userListMessage["type"] = "userlist";
@@ -77,6 +93,18 @@ void ChatServer::jsonReceived(ServerWorker *sender, const QJsonObject &docObj) {
     }
     userListMessage["userlist"] = userlist;
     sender->sendJson(userListMessage);
+  } else if (typeVal.toString().compare("register", Qt::CaseInsensitive) == 0) {
+    const QJsonValue usernameVal = docObj.value("text");
+    const QJsonValue passwordVal = docObj.value("pwd");
+    if (usernameVal.isNull() || !usernameVal.isString() ||
+        passwordVal.isNull() || !passwordVal.isString())
+      return;
+    QString msg = IDatabase::getInstance().userRegister(usernameVal.toString(),
+                                                        passwordVal.toString());
+    QJsonObject reg;
+    reg["type"] = "register";
+    reg["text"] = msg;
+    sender->sendJson(reg);
   }
 }
 
