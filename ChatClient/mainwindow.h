@@ -1,31 +1,31 @@
 #ifndef MAINWINDOW_H
 #define MAINWINDOW_H
 
+#include <QListWidgetItem>
 #include <QMainWindow>
 
 #include "chatclient.h"
 
 QT_BEGIN_NAMESPACE
-namespace Ui
-{
-  class MainWindow;
+namespace Ui {
+class MainWindow;
 }
 QT_END_NAMESPACE
 
-class MainWindow : public QMainWindow
-{
+class MainWindow : public QMainWindow {
   Q_OBJECT
 
-public:
+ public:
   MainWindow(QWidget *parent = nullptr);
   ~MainWindow();
 
-private slots:
+ private slots:
   void on_loginButton_clicked();
   void on_sayButton_clicked();
   void on_logoutButton_clicked();
   void connectedServer();
-  void messageReceived(const QString &sender, const QString &text, const QString &time);
+  void messageReceived(const QString &sender, const QString &text,
+                       const QString &time);
   void jsonReceived(const QJsonObject &docObj);
   void userJoined(const QString &user);
   void userLeft(const QString &user);
@@ -39,10 +39,22 @@ private slots:
 
   void on_goToChat_clicked();
 
-private:
+  void on_back_clicked();
+
+  void on_addBtn_clicked();
+
+  void on_search_clicked();
+
+  void on_resList_itemDoubleClicked(QListWidgetItem *item);
+
+  void on_sendBtn_clicked();
+
+  void on_applyList_itemDoubleClicked(QListWidgetItem *item);
+
+ private:
   Ui::MainWindow *ui;
   ChatClient *m_chatClient;
   QString to = "";
   QString init = "login";
 };
-#endif // MAINWINDOW_H
+#endif  // MAINWINDOW_H

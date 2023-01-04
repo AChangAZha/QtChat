@@ -5,22 +5,24 @@
 
 #include "serverworker.h"
 
-class ChatServer : public QTcpServer {
+class ChatServer : public QTcpServer
+{
   Q_OBJECT
- public:
+public:
   explicit ChatServer(QObject *parent = nullptr);
 
- protected:
+protected:
   void incomingConnection(qintptr handle) override;
   QVector<ServerWorker *> m_clients;
   void broadcast(const QJsonObject &message, ServerWorker *exclude);
+  QJsonArray getFriendList(QString id);
 
- signals:
+signals:
   void logMessage(const QString &msg);
- public slots:
+public slots:
   void stopServer();
   void jsonReceived(ServerWorker *sender, const QJsonObject &docObj);
   void userDisconnected(ServerWorker *sender);
 };
 
-#endif  // CHATSERVER_H
+#endif // CHATSERVER_H

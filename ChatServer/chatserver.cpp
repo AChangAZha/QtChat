@@ -32,6 +32,27 @@ void ChatServer::broadcast(const QJsonObject &message, ServerWorker *exclude)
   }
 }
 
+QJsonArray ChatServer::getFriendList(QString id)
+{
+  QJsonArray friendlist = IDatabase::getInstance().getFriendList(id);
+  // 判断好友是否在线
+  for (int i = 0; i < friendlist.size(); i++)
+  {
+    QString friendName = friendlist[i].toString();
+    // 提取"("之前的内容
+    QString username = friendName.left(friendName.indexOf("("));
+    for (ServerWorker *worker : m_clients)
+    {
+      if (worker->userName().compare(username) == 0)
+      {
+        friendlist[i] = friendName + "[在线]";
+        break;
+      }
+    }
+    friendlist[i] = friendName + "[离线]";
+  }
+}
+
 void ChatServer::stopServer() { close(); }
 
 void ChatServer::jsonReceived(ServerWorker *sender, const QJsonObject &docObj)
@@ -115,6 +136,14 @@ void ChatServer::jsonReceived(ServerWorker *sender, const QJsonObject &docObj)
     chatRecord["type"] = "chatRecord";
     chatRecord["chatRecord"] = IDatabase::getInstance().getChatRecord("", "0");
     sender->sendJson(chatRecord);
+    QJsonObject apply;
+    apply["type"] = "apply";
+    apply["apply"] = IDatabase::getInstance().getApply(sender->userID());
+    sender->sendJson(apply);
+    QJsonObject friendList;
+    friendList["type"] = "friendList";
+    friendList["friendList"] = IDatabase::getInstance().getFriendList(sender->userID());
+    sender->sendJson(friendList);
   }
   else if (typeVal.toString().compare("register", Qt::CaseInsensitive) == 0)
   {
@@ -129,6 +158,57 @@ void ChatServer::jsonReceived(ServerWorker *sender, const QJsonObject &docObj)
     reg["type"] = "register";
     reg["text"] = msg;
     sender->sendJson(reg);
+  }
+  // 搜索
+  else if (typeVal.toString().compare("search", Qt::CaseInsensitive) == 0)
+  {
+    const QJsonValue searchVal = docObj.value("text");
+    if (searchVal.isNull() || !searchVal.isString())
+      return;
+    QJsonObject search;
+    search["type"] = "search";
+    search["searchList"] = IDatabase::getInstance().searchFriend(searchVal.toString());
+    sender->sendJson(search);
+  }
+  // 添加申请
+  else if (typeVal.toString().compare("add", Qt::CaseInsensitive) == 0)
+  {
+    const QJsonValue addVal = docObj.value("text");
+    if (addVal.isNull() || !addVal.isString())
+      return;
+    const QString to = docObj.value("to").toString().trimmed();
+    QString time = QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss");
+    IDatabase::getInstance().addApply(sender->userID(), IDatabase::getInstance().getID(to), addVal.toString(), time, "0");
+    for (ServerWorker *worker : m_clients)
+    {
+      if (worker->userName().compare(to) == 0)
+      {
+        QJsonObject apply;
+        QString msg = addVal.toString();
+        if (!msg.isEmpty())
+        {
+          msg = ": " + msg;
+        }
+        apply["type"] = "newApply";
+        apply["message"] = sender->userName() + "(" + sender->userID() + ")申请添加你为好友：" + msg;
+        worker->sendJson(apply);
+      }
+    }
+  }
+  // 接受申请
+  else if (typeVal.toString().compare("accept", Qt::CaseInsensitive) == 0)
+  {
+    const QJsonValue acceptVal = docObj.value("text");
+    IDatabase::getInstance().addFriend(sender->userID(), IDatabase::getInstance().getID(acceptVal.toString()));
+    IDatabase::getInstance().updateApply(sender->userID(), IDatabase::getInstance().getID(acceptVal.toString()));
+    QJsonObject apply;
+    apply["type"] = "apply";
+    apply["apply"] = IDatabase::getInstance().getApply(sender->userID());
+    sender->sendJson(apply);
+    QJsonObject friendList;
+    friendList["type"] = "friendList";
+    friendList["friendList"] = getFriendList(sender->userID());
+    sender->sendJson(friendList);
   }
 }
 

@@ -21,6 +21,12 @@ public:
   QString getID(QString username);
   QString getUserName(QString id);
   QJsonArray getChatRecord(QString id, QString toID);
+  QJsonArray searchFriend(QString keyword);
+  void addApply(QString id, QString toID, QString message, QString time, QString status);
+  QJsonArray getApply(QString id);
+  void updateApply(QString id, QString toID);
+  void addFriend(QString id, QString friendID);
+  QJsonArray getFriendList(QString id);
 
 private:
   explicit IDatabase(QObject *parent = nullptr);
