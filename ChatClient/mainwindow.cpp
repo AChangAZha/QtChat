@@ -1,6 +1,7 @@
 #include "mainwindow.h"
 
 #include <QHostAddress>
+#include <QJsonArray>
 #include <QJsonObject>
 #include <QJsonValue>
 
@@ -20,6 +21,7 @@ MainWindow::MainWindow(QWidget *parent)
 MainWindow::~MainWindow() { delete ui; }
 
 void MainWindow::on_loginButton_clicked() {
+  init = "login";
   m_chatClient->connectToServer(QHostAddress(ui->serverEdit->text()), 1967);
 }
 
@@ -39,13 +41,19 @@ void MainWindow::on_logoutButton_clicked() {
 }
 
 void MainWindow::connectedServer() {
-  ui->stackedWidget->setCurrentWidget(ui->chatPage);
-  m_chatClient->loginOrRegister(ui->usernameEdit->text(),
-                                ui->passwordEdit->text());
+  if (init.compare("login") == 0) {
+    m_chatClient->loginOrRegister(ui->usernameEdit->text(),
+                                  ui->passwordEdit->text());
+  } else if (init.compare("register") == 0) {
+    m_chatClient->loginOrRegister(ui->username->text(), ui->password->text(),
+                                  "register");
+  }
 }
 
-void MainWindow::messageReceived(const QString &sender, const QString &text) {
-  ui->roomTextEdit->append(QString("%1 : %2").arg(sender).arg(text));
+void MainWindow::messageReceived(const QString &sender, const QString &text,
+                                 const QString &time) {
+  ui->roomTextEdit->append(
+      QString("%1 %2\n%3").arg(sender).arg(time).arg(text));
 }
 
 void MainWindow::jsonReceived(const QJsonObject &docObj) {
@@ -54,9 +62,12 @@ void MainWindow::jsonReceived(const QJsonObject &docObj) {
   if (typeVal.toString().compare("message", Qt::CaseInsensitive) == 0) {
     const QJsonValue textVal = docObj.value("text");
     const QJsonValue senderVal = docObj.value("sender");
+    const QJsonValue timeVal = docObj.value("time");
     if (textVal.isNull() || !textVal.isString()) return;
     if (senderVal.isNull() || !senderVal.isString()) return;
-    messageReceived(senderVal.toString(), textVal.toString());
+    if (timeVal.isNull() || !timeVal.isString()) return;
+    messageReceived(senderVal.toString(), textVal.toString(),
+                    timeVal.toString());
   } else if (typeVal.toString().compare("newuser", Qt::CaseInsensitive) == 0) {
     const QJsonValue usernameVal = docObj.value("username");
     if (usernameVal.isNull() || !usernameVal.isString()) return;
@@ -71,16 +82,31 @@ void MainWindow::jsonReceived(const QJsonObject &docObj) {
     const QJsonValue userlistVal = docObj.value("userlist");
     if (userlistVal.isNull() || !userlistVal.isArray()) return;
     userListReceived(userlistVal.toVariant().toStringList());
+    ui->stackedWidget->setCurrentWidget(ui->homePage);
+  } else if (typeVal.toString().compare("chatRecord", Qt::CaseInsensitive) ==
+             0) {
+    const QJsonValue chatRecordVal = docObj.value("chatRecord");
+    if (chatRecordVal.isNull() || !chatRecordVal.isArray()) return;
+    for (auto i : chatRecordVal.toArray()) {
+      const QJsonObject obj = i.toObject();
+      const QJsonValue textVal = obj.value("text");
+      const QJsonValue senderVal = obj.value("sender");
+      const QJsonValue timeVal = obj.value("time");
+      if (textVal.isNull() || !textVal.isString()) continue;
+      if (senderVal.isNull() || !senderVal.isString()) continue;
+      if (timeVal.isNull() || !timeVal.isString()) continue;
+      messageReceived(senderVal.toString(), textVal.toString(),
+                      timeVal.toString());
+    }
   } else if (typeVal.toString().compare("logout", Qt::CaseInsensitive) == 0) {
     on_logoutButton_clicked();
     ui->msg->setText("登录失败");
   } else if (typeVal.toString().compare("login", Qt::CaseInsensitive) == 0) {
     on_logoutButton_clicked();
     const QJsonValue msgVal = docObj.value("text");
-    ui->stackedWidget->setCurrentWidget(ui->loginPage);
     ui->msg->setText(msgVal.toString());
   } else if (typeVal.toString().compare("register", Qt::CaseInsensitive) == 0) {
-    on_logoutButton_clicked();
+    m_chatClient->disconnectFromHost();
     const QJsonValue msgVal = docObj.value("text");
     if (msgVal.toString() == "Register successful") {
       ui->msg->setText(msgVal.toString());
@@ -119,12 +145,14 @@ void MainWindow::on_userListWidget_currentTextChanged(
 }
 
 void MainWindow::on_registerBtn_clicked() {
+  init = "register";
   m_chatClient->connectToServer(QHostAddress(ui->serverEdit->text()), 1967);
-
-  m_chatClient->loginOrRegister(ui->username->text(), ui->password->text(),
-                                "register");
 }
 
-void MainWindow::on_loginButton_3_clicked() {
+void MainWindow::on_goToRegister_clicked() {
   ui->stackedWidget->setCurrentWidget(ui->registerPage);
+}
+
+void MainWindow::on_goToChat_clicked() {
+  ui->stackedWidget->setCurrentWidget(ui->chatPage);
 }

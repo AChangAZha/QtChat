@@ -15,9 +15,12 @@ public:
     static IDatabase instance;
     return instance;
   }
-  QString userLogin(QString id, QString password);
+  QString userLogin(QString username, QString password);
   QString userRegister(QString username, QString password);
+  void addChatRecord(QString id, QString toID, QString message, QString time);
+  QString getID(QString username);
   QString getUserName(QString id);
+  QJsonArray getChatRecord(QString id, QString toID);
 
 private:
   explicit IDatabase(QObject *parent = nullptr);

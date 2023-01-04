@@ -31,13 +31,10 @@
     <item>
      <widget class="QStackedWidget" name="stackedWidget">
       <property name="currentIndex">
-       <number>2</number>
+       <number>3</number>
       </property>
       <widget class="QWidget" name="chatPage">
        <layout class="QGridLayout" name="gridLayout_3">
-        <item row="0" column="0">
-         <widget class="QTextEdit" name="roomTextEdit"/>
-        </item>
         <item row="1" column="0" colspan="2">
          <layout class="QHBoxLayout" name="horizontalLayout">
           <item>
@@ -50,14 +47,10 @@
             </property>
            </widget>
           </item>
-          <item>
-           <widget class="QPushButton" name="logoutButton">
-            <property name="text">
-             <string>退出</string>
-            </property>
-           </widget>
-          </item>
          </layout>
+        </item>
+        <item row="0" column="0">
+         <widget class="QTextEdit" name="roomTextEdit"/>
         </item>
         <item row="0" column="1">
          <widget class="QListWidget" name="userListWidget">
@@ -172,7 +165,7 @@ border:2px groove gray;border-radius:10px;</string>
 background-color: rgb(238, 238, 236);</string>
                </property>
                <property name="text">
-                <string>zhanghan</string>
+                <string>ZhangHan</string>
                </property>
               </widget>
              </item>
@@ -191,6 +184,9 @@ background-color: rgb(238, 238, 236);</string>
                </property>
                <property name="text">
                 <string/>
+               </property>
+               <property name="echoMode">
+                <enum>QLineEdit::Password</enum>
                </property>
               </widget>
              </item>
@@ -225,7 +221,7 @@ background-color: rgb(136, 138, 133);</string>
             </widget>
            </item>
            <item>
-            <widget class="QPushButton" name="loginButton_3">
+            <widget class="QPushButton" name="goToRegister">
              <property name="styleSheet">
               <string notr="true">border-radius:10px;
 
@@ -306,6 +302,67 @@ background-color: rgb(136, 138, 133);</string>
         </property>
         <property name="text">
          <string>TextLabel</string>
+        </property>
+       </widget>
+      </widget>
+      <widget class="QWidget" name="homePage">
+       <widget class="QListWidget" name="friendList">
+        <property name="geometry">
+         <rect>
+          <x>390</x>
+          <y>20</y>
+          <width>256</width>
+          <height>192</height>
+         </rect>
+        </property>
+       </widget>
+       <widget class="QListWidget" name="groupList">
+        <property name="geometry">
+         <rect>
+          <x>420</x>
+          <y>220</y>
+          <width>256</width>
+          <height>192</height>
+         </rect>
+        </property>
+       </widget>
+       <widget class="QPushButton" name="addBtn">
+        <property name="geometry">
+         <rect>
+          <x>60</x>
+          <y>240</y>
+          <width>80</width>
+          <height>23</height>
+         </rect>
+        </property>
+        <property name="text">
+         <string>添加好友/群组</string>
+        </property>
+       </widget>
+       <widget class="QPushButton" name="goToChat">
+        <property name="geometry">
+         <rect>
+          <x>60</x>
+          <y>280</y>
+          <width>80</width>
+          <height>23</height>
+         </rect>
+        </property>
+        <property name="text">
+         <string>聊天大厅</string>
+        </property>
+       </widget>
+       <widget class="QPushButton" name="logoutButton">
+        <property name="geometry">
+         <rect>
+          <x>230</x>
+          <y>280</y>
+          <width>80</width>
+          <height>23</height>
+         </rect>
+        </property>
+        <property name="text">
+         <string>退出</string>
         </property>
        </widget>
       </widget>
