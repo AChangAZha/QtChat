@@ -86,7 +86,7 @@ void ChatServer::jsonReceived(ServerWorker *sender, const QJsonObject &docObj)
     {
       for (ServerWorker *worker : m_clients)
       {
-        if (worker->userName().compare(to) == 0 || worker == sender)
+        if (worker->userName().compare(to) == 0)
         {
           message["friend"] = to;
           worker->sendJson(message);
@@ -94,8 +94,12 @@ void ChatServer::jsonReceived(ServerWorker *sender, const QJsonObject &docObj)
       }
       to = IDatabase::getInstance().getID(to);
     }
-    IDatabase::getInstance().addChatRecord(sender->userID(), to, text,
-                                           message["time"].toString());
+    if (text[0] != '#')
+    {
+      sender->sendJson(message);
+      IDatabase::getInstance().addChatRecord(sender->userID(), to, text,
+                                             message["time"].toString());
+    }
   }
   else if (typeVal.toString().compare("login", Qt::CaseInsensitive) == 0)
   {

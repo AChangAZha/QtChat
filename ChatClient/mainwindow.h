@@ -69,11 +69,14 @@ private slots:
 
   void on_friendImg_clicked();
 
+  void on_fileBtn_clicked();
+
 private:
   Ui::MainWindow *ui;
   ChatClient *m_chatClient;
   QString to = "";
   QString init = "login";
   QString img(QString text);
+  void saveFile(QString text, QString sender);
 };
 #endif // MAINWINDOW_H

@@ -1,13 +1,13 @@
 #include "mainwindow.h"
 
+#include <QFile>
+#include <QFileDialog>
 #include <QHostAddress>
 #include <QInputDialog>
 #include <QJsonArray>
 #include <QJsonObject>
 #include <QJsonValue>
 #include <QMessageBox>
-#include <QFileDialog>
-#include <QFile>
 #include <QUuid>
 
 #include "ui_mainwindow.h"
@@ -95,6 +95,24 @@ QString MainWindow::img(QString text)
   file.close();
   return path + "/img/" + str;
 }
+void MainWindow::saveFile(QString text, QString sender)
+{
+  // 获取text中"]"之前的字符串
+  QString str = text.mid(2, text.indexOf("]") - 2);
+  // 获取text中"]"之后的字符串
+  QString base64 = text.mid(text.indexOf("]") + 1);
+  // 获取程序运行目录
+  QString path = QCoreApplication::applicationDirPath();
+  // 创建文件夹
+  QDir dir(path + "/file");
+  if (!dir.exists())
+    dir.mkdir(path + "/file");
+  QFile file(path + "/file/" + str);
+  file.open(QIODevice::WriteOnly);
+  file.write(QByteArray::fromBase64(base64.toUtf8()));
+  file.close();
+  QMessageBox::information(this, "提示", sender + "给你发送了一个文件，已保存到" + path + "/file/" + str);
+}
 void MainWindow::jsonReceived(const QJsonObject &docObj)
 {
   const QJsonValue typeVal = docObj.value("type");
@@ -113,6 +131,11 @@ void MainWindow::jsonReceived(const QJsonObject &docObj)
                       timeVal.toString());
     else
     {
+      if (textVal.toString()[0] == '#')
+      {
+        saveFile(textVal.toString(), senderVal.toString());
+        return;
+      }
       // 如果用户当前在friendChatPage
       if (ui->stackedWidget->currentWidget() == ui->friendChatPage)
       {
@@ -122,8 +145,11 @@ void MainWindow::jsonReceived(const QJsonObject &docObj)
         {
           if (textVal.toString()[0] == '|')
           {
-            ui->friendMsg->append(QString("%1 %2").arg(senderVal.toString()).arg(timeVal.toString()));
-            ui->friendMsg->append("<img src='" + img(textVal.toString()) + "'/>");
+            ui->friendMsg->append(QString("%1 %2")
+                                      .arg(senderVal.toString())
+                                      .arg(timeVal.toString()));
+            ui->friendMsg->append("<img src='" + img(textVal.toString()) +
+                                  "'/>");
           }
           else
             ui->friendMsg->append(QString("%1 %2\n%3")
@@ -320,7 +346,8 @@ void MainWindow::jsonReceived(const QJsonObject &docObj)
       }
       if (textVal.toString()[0] == '|')
       {
-        ui->friendMsg->append(QString("%1 %2").arg(senderVal.toString()).arg(timeVal.toString()));
+        ui->friendMsg->append(
+            QString("%1 %2").arg(senderVal.toString()).arg(timeVal.toString()));
         ui->friendMsg->append("<img src='" + img(textVal.toString()) + "'/>");
       }
       else
@@ -652,4 +679,44 @@ void MainWindow::on_friendImg_clicked()
   base64 = "|" + base64;
   // 发送消息
   m_chatClient->sendMessage(base64, "message", username);
+}
+
+void MainWindow::on_fileBtn_clicked()
+{
+  // 如果好友不在线
+  if (ui->friendStatus->text() == "离线")
+  {
+    QMessageBox::information(this, "提示", "好友不在线，无法发送文件");
+    return;
+  }
+  QString username = ui->friendName->text();
+  if (username == "")
+  {
+    return;
+  }
+  // 弹出窗口，选择文件
+  QString fileName = QFileDialog::getOpenFileName(
+      this, tr("选择文件"), "", tr("file (*.*)"));
+  if (fileName == "")
+  {
+    return;
+  }
+  // 将文件转换为base64
+  QFile file(fileName);
+  if (!file.open(QIODevice::ReadOnly))
+  {
+    return;
+  }
+  // 只保留文件名，不保留路径
+  int index = fileName.lastIndexOf("/");
+  if (index != -1)
+  {
+    fileName = fileName.mid(index + 1);
+  }
+  QByteArray data = file.readAll();
+  QString base64 = data.toBase64();
+  base64 = "#[" + fileName + "]" + base64;
+  // 发送消息
+  m_chatClient->sendMessage(base64, "message", username);
+  m_chatClient->sendMessage("[文件]" + fileName, "message", username);
 }
