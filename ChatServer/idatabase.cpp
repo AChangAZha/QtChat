@@ -75,6 +75,19 @@ QString IDatabase::getUserName(QString id)
     return "";
 }
 
+QString IDatabase::getLastTime(QString id)
+{
+    QSqlQuery query;
+    query.prepare("SELECT * FROM users WHERE id = :id");
+    query.bindValue(":id", id);
+    query.exec();
+    if (query.next())
+    {
+        return query.value("lasttime").toString();
+    }
+    return "";
+}
+
 QJsonArray IDatabase::getChatRecord(QString id, QString toID)
 {
     QJsonArray chatRecord;
@@ -87,7 +100,9 @@ QJsonArray IDatabase::getChatRecord(QString id, QString toID)
     }
     else
     {
-        query.prepare("SELECT * FROM chatrecord WHERE id = :id AND toID = :toID");
+        query.prepare(
+            "SELECT * FROM chatrecord WHERE (id = :id AND toID = :toID) "
+            "OR (id = :toID AND toID = :id)");
         query.bindValue(":id", id);
         query.bindValue(":toID", toID);
         query.exec();
@@ -97,8 +112,29 @@ QJsonArray IDatabase::getChatRecord(QString id, QString toID)
         QJsonObject record;
         record.insert("sender", getUserName(query.value("id").toString()));
         record.insert("toID", query.value("toID").toString());
+        record.insert("to", getUserName(query.value("toID").toString()));
         record.insert("text", query.value("message").toString());
         record.insert("time", query.value("time").toString());
+        chatRecord.append(record);
+    }
+    return chatRecord;
+}
+
+QJsonArray IDatabase::getLastChatRecord(QString id, QString time)
+{
+    QJsonArray chatRecord;
+    QSqlQuery query;
+    query.prepare(
+        "SELECT * FROM chatrecord WHERE time > DATETIME(:time) AND toID = :id");
+    query.bindValue(":time", time);
+    query.bindValue(":id", id);
+    query.exec();
+    while (query.next())
+    {
+        QJsonObject record;
+        record.insert("friend", getUserName(query.value("id").toString()));
+        record.insert("sender", getUserName(query.value("id").toString()));
+        record.insert("type", "message");
         chatRecord.append(record);
     }
     return chatRecord;
@@ -118,7 +154,8 @@ QJsonArray IDatabase::searchFriend(QString id, QString keyword)
         friendList.append(query.value("username").toString() + "(" +
                           query.value("id").toString() + ")");
     }
-    query.prepare("SELECT * FROM users WHERE username LIKE :keyword AND id != :id");
+    query.prepare(
+        "SELECT * FROM users WHERE username LIKE :keyword AND id != :id");
     query.bindValue(":keyword", "%" + keyword + "%");
     query.bindValue(":id", id);
     query.exec();
@@ -184,16 +221,13 @@ QJsonArray IDatabase::getApply(QString id)
         }
         else if (query.value("status").toString() == "1")
         {
-            applyList.append("您已同意" +
-                             getUserName(query.value("id").toString()) + "(" +
-                             query.value("id").toString() +
-                             ")的好友申请");
+            applyList.append("您已同意" + getUserName(query.value("id").toString()) +
+                             "(" + query.value("id").toString() + ")的好友申请");
         }
         else
         {
             applyList.append(getUserName(query.value("id").toString()) + "(" +
-                             query.value("id").toString() +
-                             ")已同意您的好友申请");
+                             query.value("id").toString() + ")已同意您的好友申请");
         }
     }
     return applyList;
@@ -263,6 +297,17 @@ QJsonArray IDatabase::getGroupList(QString id)
                          query.value("groups.id").toString() + ")");
     }
     return groupList;
+}
+
+void IDatabase::updateLastTime(QString username)
+{
+    QSqlQuery query;
+    query.prepare(
+        "UPDATE users SET lasttime = :lastTime WHERE username = :username");
+    query.bindValue(":lastTime",
+                    QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss"));
+    query.bindValue(":username", username);
+    query.exec();
 }
 
 IDatabase::IDatabase(QObject *parent) : QObject(parent) { initDatabase(); }

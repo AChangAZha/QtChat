@@ -7,19 +7,21 @@
 #include "chatclient.h"
 
 QT_BEGIN_NAMESPACE
-namespace Ui {
-class MainWindow;
+namespace Ui
+{
+  class MainWindow;
 }
 QT_END_NAMESPACE
 
-class MainWindow : public QMainWindow {
+class MainWindow : public QMainWindow
+{
   Q_OBJECT
 
- public:
+public:
   MainWindow(QWidget *parent = nullptr);
   ~MainWindow();
 
- private slots:
+private slots:
   void on_loginButton_clicked();
   void on_sayButton_clicked();
   void on_logoutButton_clicked();
@@ -59,10 +61,19 @@ class MainWindow : public QMainWindow {
 
   void on_creatGroup_clicked();
 
- private:
+  void on_friendList_itemClicked(QListWidgetItem *item);
+
+  void on_friendSend_clicked();
+
+  void on_pushButton_5_clicked();
+
+  void on_friendImg_clicked();
+
+private:
   Ui::MainWindow *ui;
   ChatClient *m_chatClient;
   QString to = "";
   QString init = "login";
+  QString img(QString text);
 };
-#endif  // MAINWINDOW_H
+#endif // MAINWINDOW_H

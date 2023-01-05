@@ -20,7 +20,9 @@ public:
   void addChatRecord(QString id, QString toID, QString message, QString time);
   QString getID(QString username);
   QString getUserName(QString id);
+  QString getLastTime(QString id);
   QJsonArray getChatRecord(QString id, QString toID);
+  QJsonArray getLastChatRecord(QString id, QString time);
   QJsonArray searchFriend(QString id, QString keyword);
   void addApply(QString id, QString toID, QString message, QString time, QString status);
   QJsonArray getApply(QString id);
@@ -29,6 +31,7 @@ public:
   void addGroup(QString id, QString name);
   QJsonArray getFriendList(QString id);
   QJsonArray getGroupList(QString id);
+  void updateLastTime(QString userName);
 
 private:
   explicit IDatabase(QObject *parent = nullptr);

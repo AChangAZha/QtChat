@@ -69,25 +69,33 @@ void ChatServer::jsonReceived(ServerWorker *sender, const QJsonObject &docObj)
     const QString text = textVal.toString().trimmed();
     if (text.isEmpty())
       return;
-    const QString to = docObj.value("to").toString().trimmed();
+    QString to = docObj.value("to").toString().trimmed();
+    const QJsonValue groupVal = docObj.value("group");
     QJsonObject message;
     message["type"] = "message";
     message["text"] = text;
     message["sender"] = sender->userName();
     message["time"] =
         QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss");
-    IDatabase::getInstance().addChatRecord(sender->userID(), "0", text,
-                                           message["time"].toString());
     if (to.isEmpty())
+    {
       broadcast(message, sender);
-    else
+      to = "0";
+    }
+    else if (groupVal.isNull() || !groupVal.isString())
     {
       for (ServerWorker *worker : m_clients)
       {
         if (worker->userName().compare(to) == 0 || worker == sender)
+        {
+          message["friend"] = to;
           worker->sendJson(message);
+        }
       }
+      to = IDatabase::getInstance().getID(to);
     }
+    IDatabase::getInstance().addChatRecord(sender->userID(), to, text,
+                                           message["time"].toString());
   }
   else if (typeVal.toString().compare("login", Qt::CaseInsensitive) == 0)
   {
@@ -152,6 +160,14 @@ void ChatServer::jsonReceived(ServerWorker *sender, const QJsonObject &docObj)
     groupList["type"] = "groupList";
     groupList["groupList"] = IDatabase::getInstance().getGroupList(sender->userID());
     sender->sendJson(groupList);
+    // 聊天记录
+    QString lasttime = IDatabase::getInstance().getLastTime(sender->userID());
+    QJsonArray chatRecord2 = IDatabase::getInstance().getLastChatRecord(sender->userID(), lasttime);
+    // 遍历
+    for (int i = 0; i < chatRecord2.size(); i++)
+    {
+      sender->sendJson(chatRecord2[i].toObject());
+    }
   }
   else if (typeVal.toString().compare("register", Qt::CaseInsensitive) == 0)
   {
@@ -274,6 +290,18 @@ void ChatServer::jsonReceived(ServerWorker *sender, const QJsonObject &docObj)
     group["groupList"] = IDatabase::getInstance().getGroupList(sender->userID());
     sender->sendJson(group);
   }
+  // getChatRecord
+  else if (typeVal.toString().compare("getChatRecord", Qt::CaseInsensitive) == 0)
+  {
+    const QJsonValue toVal = docObj.value("text");
+    if (toVal.isNull() || !toVal.isString())
+      return;
+    const QString to = toVal.toString();
+    QJsonObject chatRecord;
+    chatRecord["type"] = "friendChatRecord";
+    chatRecord["chatRecord"] = IDatabase::getInstance().getChatRecord(sender->userID(), IDatabase::getInstance().getID(to));
+    sender->sendJson(chatRecord);
+  }
 }
 
 void ChatServer::userDisconnected(ServerWorker *sender)
@@ -286,6 +314,7 @@ void ChatServer::userDisconnected(ServerWorker *sender)
     disconectedMessage["type"] = "userdisconnected";
     disconectedMessage["username"] = userName;
     broadcast(disconectedMessage, nullptr);
+    IDatabase::getInstance().updateLastTime(userName);
     emit logMessage(userName + " disconnected");
   }
   sender->deleteLater();
