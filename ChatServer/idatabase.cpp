@@ -27,17 +27,21 @@ QString IDatabase::userRegister(QString username, QString password)
     {
         return "User already exists";
     }
-    query.prepare("INSERT INTO users (username, password) VALUES (:username, :password)");
+    query.prepare(
+        "INSERT INTO users (username, password) VALUES (:username, :password)");
     query.bindValue(":username", username);
     query.bindValue(":password", password);
     query.exec();
     return "Register successful";
 }
 
-void IDatabase::addChatRecord(QString id, QString toID, QString message, QString time)
+void IDatabase::addChatRecord(QString id, QString toID, QString message,
+                              QString time)
 {
     QSqlQuery query;
-    query.prepare("INSERT INTO chatrecord (id, toID, message, time) VALUES (:id, :toID, :message, :time)");
+    query.prepare(
+        "INSERT INTO chatrecord (id, toID, message, time) VALUES (:id, :toID, "
+        ":message, :time)");
     query.bindValue(":id", id);
     query.bindValue(":toID", toID);
     query.bindValue(":message", message);
@@ -100,32 +104,56 @@ QJsonArray IDatabase::getChatRecord(QString id, QString toID)
     return chatRecord;
 }
 
-QJsonArray IDatabase::searchFriend(QString keyword)
+QJsonArray IDatabase::searchFriend(QString id, QString keyword)
 {
     // 先通过ID查找，再通过用户名查找
     QJsonArray friendList;
     QSqlQuery query;
-    query.prepare("SELECT * FROM users WHERE id = :id");
-    query.bindValue(":id", keyword);
+    query.prepare("SELECT * FROM users WHERE id = :keyword AND id != :id");
+    query.bindValue(":id", id);
+    query.bindValue(":keyword", keyword);
     query.exec();
     while (query.next())
     {
-        friendList.append(query.value("username").toString() + "(" + query.value("id").toString() + ")");
+        friendList.append(query.value("username").toString() + "(" +
+                          query.value("id").toString() + ")");
     }
-    query.prepare("SELECT * FROM users WHERE username LIKE :keyword");
+    query.prepare("SELECT * FROM users WHERE username LIKE :keyword AND id != :id");
+    query.bindValue(":keyword", "%" + keyword + "%");
+    query.bindValue(":id", id);
+    query.exec();
+    while (query.next())
+    {
+        friendList.append(query.value("username").toString() + "(" +
+                          query.value("id").toString() + ")");
+    }
+    // 查询群组，先通过ID查找，再通过群名查找
+    query.prepare("SELECT * FROM groups WHERE id = :keyword");
+    query.bindValue(":keyword", keyword);
+    query.exec();
+    while (query.next())
+    {
+        friendList.append(query.value("name").toString() + "(群组" +
+                          query.value("id").toString() + ")");
+    }
+    query.prepare("SELECT * FROM groups WHERE name LIKE :keyword");
     query.bindValue(":keyword", "%" + keyword + "%");
     query.exec();
     while (query.next())
     {
-        friendList.append(query.value("username").toString() + "(" + query.value("id").toString() + ")");
+        friendList.append(query.value("name").toString() + "(群组" +
+                          query.value("id").toString() + ")");
     }
     return friendList;
 }
 
-void IDatabase::addApply(QString id, QString toID, QString message, QString time, QString status)
+void IDatabase::addApply(QString id, QString toID, QString message,
+                         QString time, QString status)
 {
     QSqlQuery query;
-    query.prepare("INSERT INTO apply (id, toID, message, time, status) VALUES (:id, :toID, :message, :time, :status)");
+    query.prepare(
+        "INSERT INTO apply (id, toID, message, time, status) VALUES (:id, :toID, "
+        ":message, :time, :status)");
     query.bindValue(":id", id);
     query.bindValue(":toID", toID);
     query.bindValue(":message", message);
@@ -150,11 +178,22 @@ QJsonArray IDatabase::getApply(QString id)
             {
                 message = ": " + message;
             }
-            applyList.append(getUserName(query.value("id").toString()) + "(" + query.value("id").toString() + ")申请添加你为好友" + message);
+            applyList.append(getUserName(query.value("id").toString()) + "(" +
+                             query.value("id").toString() + ")申请添加你为好友" +
+                             message);
+        }
+        else if (query.value("status").toString() == "1")
+        {
+            applyList.append("您已同意" +
+                             getUserName(query.value("id").toString()) + "(" +
+                             query.value("id").toString() +
+                             ")的好友申请");
         }
         else
         {
-            applyList.append(getUserName("您已同意" + query.value("id").toString() + "(" + query.value("id").toString() + ")的好友申请"));
+            applyList.append(getUserName(query.value("id").toString()) + "(" +
+                             query.value("id").toString() +
+                             ")已同意您的好友申请");
         }
     }
     return applyList;
@@ -163,20 +202,31 @@ QJsonArray IDatabase::getApply(QString id)
 void IDatabase::updateApply(QString id, QString toID)
 {
     QSqlQuery query;
-    query.prepare("UPDATE apply SET status = :status WHERE id = :id AND toID = :toID");
+    query.prepare(
+        "UPDATE apply SET status = :status WHERE id = :id AND toID = :toID");
     query.bindValue(":status", "1");
     query.bindValue(":id", id);
     query.bindValue(":toID", toID);
     query.exec();
 }
 
-void IDatabase::addFriend(QString id, QString friendID)
+void IDatabase::addFriend(QString id, QString friendID, QString type)
 {
     QSqlQuery query;
-    query.prepare("INSERT INTO friend (id, friendID, type) VALUES (:id, :friendID, :type)");
+    query.prepare(
+        "INSERT INTO friend (id, friendID, type) VALUES (:id, :friendID, :type)");
     query.bindValue(":id", id);
     query.bindValue(":friendID", friendID);
-    query.bindValue(":type", "0");
+    query.bindValue(":type", type);
+    query.exec();
+}
+
+void IDatabase::addGroup(QString id, QString name)
+{
+    QSqlQuery query;
+    query.prepare("INSERT INTO groups (id, name) VALUES (:id, :name)");
+    query.bindValue(":id", id);
+    query.bindValue(":name", name);
     query.exec();
 }
 
@@ -184,14 +234,35 @@ QJsonArray IDatabase::getFriendList(QString id)
 {
     QJsonArray friendList;
     QSqlQuery query;
-    query.prepare("SELECT * FROM friend WHERE id = :id");
+    query.prepare("SELECT * FROM friend WHERE id = :id AND type = :type");
     query.bindValue(":id", id);
+    query.bindValue(":type", "0");
     query.exec();
     while (query.next())
     {
-        friendList.append(getUserName(query.value("friendID").toString()) + "(" + query.value("friendID").toString() + ")");
+        friendList.append(getUserName(query.value("friendID").toString()) + "(" +
+                          query.value("friendID").toString() + ")");
     }
     return friendList;
+}
+
+QJsonArray IDatabase::getGroupList(QString id)
+{
+    QJsonArray groupList;
+    QSqlQuery query;
+    // 查询friend表中type为1的记录，与groups联合查询
+    query.prepare(
+        "SELECT * FROM friend, groups WHERE friend.id = :id AND friend.type = "
+        ":type AND friend.friendID = groups.id");
+    query.bindValue(":id", id);
+    query.bindValue(":type", "1");
+    query.exec();
+    while (query.next())
+    {
+        groupList.append(query.value("groups.name").toString() + "(" +
+                         query.value("groups.id").toString() + ")");
+    }
+    return groupList;
 }
 
 IDatabase::IDatabase(QObject *parent) : QObject(parent) { initDatabase(); }

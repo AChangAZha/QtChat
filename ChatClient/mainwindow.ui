@@ -31,7 +31,7 @@
     <item>
      <widget class="QStackedWidget" name="stackedWidget">
       <property name="currentIndex">
-       <number>4</number>
+       <number>1</number>
       </property>
       <widget class="QWidget" name="chatPage">
        <layout class="QGridLayout" name="gridLayout_3">
@@ -71,6 +71,7 @@
         </item>
        </layout>
       </widget>
+      <widget class="QWidget" name="groupChatPage"/>
       <widget class="QWidget" name="loginPage">
        <layout class="QGridLayout" name="gridLayout_2">
         <item row="1" column="2">
@@ -311,6 +312,19 @@ background-color: rgb(136, 138, 133);</string>
          <string>TextLabel</string>
         </property>
        </widget>
+       <widget class="QPushButton" name="pushButton_3">
+        <property name="geometry">
+         <rect>
+          <x>490</x>
+          <y>250</y>
+          <width>80</width>
+          <height>23</height>
+         </rect>
+        </property>
+        <property name="text">
+         <string>取消</string>
+        </property>
+       </widget>
       </widget>
       <widget class="QWidget" name="homePage">
        <widget class="QListWidget" name="friendList">
@@ -417,6 +431,32 @@ background-color: rgb(136, 138, 133);</string>
          </rect>
         </property>
        </widget>
+       <widget class="QPushButton" name="pushButton">
+        <property name="geometry">
+         <rect>
+          <x>30</x>
+          <y>120</y>
+          <width>80</width>
+          <height>23</height>
+         </rect>
+        </property>
+        <property name="text">
+         <string>返回</string>
+        </property>
+       </widget>
+       <widget class="QPushButton" name="creatGroup">
+        <property name="geometry">
+         <rect>
+          <x>540</x>
+          <y>110</y>
+          <width>80</width>
+          <height>23</height>
+         </rect>
+        </property>
+        <property name="text">
+         <string>创建群聊</string>
+        </property>
+       </widget>
       </widget>
       <widget class="QWidget" name="sendPage">
        <widget class="QTextEdit" name="sendEdit">
@@ -492,6 +532,19 @@ background-color: rgb(136, 138, 133);</string>
         </property>
         <property name="text">
          <string>TextLabel</string>
+        </property>
+       </widget>
+       <widget class="QPushButton" name="pushButton_2">
+        <property name="geometry">
+         <rect>
+          <x>400</x>
+          <y>140</y>
+          <width>80</width>
+          <height>23</height>
+         </rect>
+        </property>
+        <property name="text">
+         <string>取消</string>
         </property>
        </widget>
       </widget>

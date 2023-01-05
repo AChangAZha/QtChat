@@ -4,6 +4,8 @@
 #include <QJsonArray>
 #include <QJsonObject>
 #include <QJsonValue>
+#include <QMessageBox>
+#include <QInputDialog>
 
 #include "ui_mainwindow.h"
 
@@ -113,6 +115,7 @@ void MainWindow::jsonReceived(const QJsonObject &docObj)
   else if (typeVal.toString().compare("chatRecord", Qt::CaseInsensitive) ==
            0)
   {
+    ui->roomTextEdit->clear();
     const QJsonValue chatRecordVal = docObj.value("chatRecord");
     if (chatRecordVal.isNull() || !chatRecordVal.isArray())
       return;
@@ -194,11 +197,36 @@ void MainWindow::jsonReceived(const QJsonObject &docObj)
     ui->friendList->clear();
     ui->friendList->addItems(friendListVal.toVariant().toStringList());
   }
+  // 群组列表
+  else if (typeVal.toString().compare("groupList", Qt::CaseInsensitive) == 0)
+  {
+    const QJsonValue groupListVal = docObj.value("groupList");
+    if (groupListVal.isNull() || !groupListVal.isArray())
+      return;
+    ui->groupList->clear();
+    ui->groupList->addItems(groupListVal.toVariant().toStringList());
+  }
 }
 
 void MainWindow::userJoined(const QString &user)
 {
   ui->userListWidget->addItem(user);
+  // 遍历好友列表
+  for (int i = 0; i < ui->friendList->count(); i++)
+  {
+    // 提取括号前的用户名
+    QString friendName = ui->friendList->item(i)->text();
+    friendName = friendName.left(friendName.indexOf("("));
+    // 把好友列表中的用户名和新加入的用户名比较
+    if (friendName == user)
+    {
+      // 如果相同，就把好友列表中的用户名改成在线状态
+      // 修改[离线]为[在线]
+      QString friendName = ui->friendList->item(i)->text();
+      friendName.replace("离线", "在线");
+      ui->friendList->item(i)->setText(friendName);
+    }
+  }
 }
 
 void MainWindow::userLeft(const QString &user)
@@ -207,6 +235,21 @@ void MainWindow::userLeft(const QString &user)
   {
     ui->userListWidget->removeItemWidget(aItem);
     delete aItem;
+  }
+  for (int i = 0; i < ui->friendList->count(); i++)
+  {
+    // 提取括号前的用户名
+    QString friendName = ui->friendList->item(i)->text();
+    friendName = friendName.left(friendName.indexOf("("));
+    // 把好友列表中的用户名和新加入的用户名比较
+    if (friendName == user)
+    {
+      // 如果相同，就把好友列表中的用户名改成在线状态
+      // 修改[离线]为[在线]
+      QString friendName = ui->friendList->item(i)->text();
+      friendName.replace("在线", "离线");
+      ui->friendList->item(i)->setText(friendName);
+    }
   }
 }
 
@@ -287,6 +330,27 @@ void MainWindow::on_resList_itemDoubleClicked(QListWidgetItem *item)
     return;
   }
   QString id = res.mid(pos + 1, pos2 - pos - 1);
+  // 如果id含有“群组”
+  if (id.contains("群组"))
+  {
+    // 将id中的群组去掉
+    id.replace("群组", "");
+    // 发送添加群组请求
+    m_chatClient->sendMessage(id, "addGroup");
+    return;
+  }
+  // 遍历好友列表
+  for (int i = 0; i < ui->friendList->count(); i++)
+  {
+    QString friendName = ui->friendList->item(i)->text();
+    if (friendName.compare(username + "(" + id + ")[在线]") == 0 ||
+        friendName.compare(username + "(" + id + ")[离线]") == 0)
+    {
+      // 弹出窗口
+      QMessageBox::information(this, "提示", "你们已经是好友了");
+      return;
+    }
+  }
   ui->idLabel->setText(id);
   ui->usernameLabel->setText(username);
   ui->stackedWidget->setCurrentWidget(ui->sendPage);
@@ -301,11 +365,18 @@ void MainWindow::on_sendBtn_clicked()
     return;
   }
   m_chatClient->sendMessage(send, "add", username);
+  ui->sendEdit->clear();
+  ui->stackedWidget->setCurrentWidget(ui->addPage);
 }
 
 void MainWindow::on_applyList_itemDoubleClicked(QListWidgetItem *item)
 {
   QString res = item->text();
+  // 如果含有“同意”则返回
+  if (res.contains("同意"))
+  {
+    return;
+  }
   if (res == "")
   {
     return;
@@ -326,4 +397,33 @@ void MainWindow::on_applyList_itemDoubleClicked(QListWidgetItem *item)
   QString id = res.mid(pos + 1, pos2 - pos - 1);
   // 发送消息
   m_chatClient->sendMessage(username, "accept");
+}
+
+void MainWindow::on_pushButton_2_clicked()
+{
+  ui->stackedWidget->setCurrentWidget(ui->addPage);
+}
+
+void MainWindow::on_pushButton_3_clicked()
+{
+  ui->stackedWidget->setCurrentWidget(ui->loginPage);
+}
+
+void MainWindow::on_pushButton_clicked()
+{
+  ui->stackedWidget->setCurrentWidget(ui->homePage);
+}
+
+void MainWindow::on_creatGroup_clicked()
+{
+  // 弹出窗口，输入群名
+  bool ok;
+  QString text = QInputDialog::getText(this, tr("创建群组"),
+                                       tr("请输入群组名:"), QLineEdit::Normal,
+                                       "", &ok);
+  if (ok && !text.isEmpty())
+  {
+    // 发送消息
+    m_chatClient->sendMessage(text, "createGroup");
+  }
 }
