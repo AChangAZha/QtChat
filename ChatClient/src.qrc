@@ -1,0 +1,12 @@
+<RCC>
+    <qresource prefix="/new/prefix1">
+        <file>img/file.png</file>
+        <file>img/pic.png</file>
+        <file>img/send.png</file>
+        <file>img/back.png</file>
+        <file>img/add.png</file>
+        <file>img/chat.png</file>
+        <file>img/exit.png</file>
+        <file>img/invite.png</file>
+    </qresource>
+</RCC>

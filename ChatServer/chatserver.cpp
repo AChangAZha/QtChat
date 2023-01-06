@@ -61,7 +61,8 @@ void ChatServer::jsonReceived(ServerWorker *sender, const QJsonObject &docObj)
   const QJsonValue typeVal = docObj.value("type");
   if (typeVal.isNull() || !typeVal.isString())
     return;
-  if (typeVal.toString().compare("message", Qt::CaseInsensitive) == 0)
+  if (typeVal.toString().compare("message", Qt::CaseInsensitive) == 0 ||
+      typeVal.toString().compare("group", Qt::CaseInsensitive) == 0)
   {
     const QJsonValue textVal = docObj.value("text");
     if (textVal.isNull() || !textVal.isString())
@@ -70,7 +71,6 @@ void ChatServer::jsonReceived(ServerWorker *sender, const QJsonObject &docObj)
     if (text.isEmpty())
       return;
     QString to = docObj.value("to").toString().trimmed();
-    const QJsonValue groupVal = docObj.value("group");
     QJsonObject message;
     message["type"] = "message";
     message["text"] = text;
@@ -82,21 +82,41 @@ void ChatServer::jsonReceived(ServerWorker *sender, const QJsonObject &docObj)
       broadcast(message, sender);
       to = "0";
     }
-    else if (groupVal.isNull() || !groupVal.isString())
+    else if (typeVal.toString().compare("message", Qt::CaseInsensitive) ==
+             0)
     {
+      message["friend"] = to;
       for (ServerWorker *worker : m_clients)
       {
         if (worker->userName().compare(to) == 0)
         {
-          message["friend"] = to;
           worker->sendJson(message);
         }
       }
       to = IDatabase::getInstance().getID(to);
     }
+    else
+    {
+      // 获取群组成员并遍历
+      message["friend"] = to;
+      QStringList group = IDatabase::getInstance().getGroupMember(to);
+      for (QString member : group)
+      {
+        for (ServerWorker *worker : m_clients)
+        {
+          if (worker->userName().compare(
+                  IDatabase::getInstance().getUserName(member)) == 0 &&
+              worker != sender)
+          {
+            worker->sendJson(message);
+          }
+        }
+      }
+    }
     if (text[0] != '#')
     {
-      sender->sendJson(message);
+      if (to != "0")
+        sender->sendJson(message);
       IDatabase::getInstance().addChatRecord(sender->userID(), to, text,
                                              message["time"].toString());
     }
@@ -162,11 +182,13 @@ void ChatServer::jsonReceived(ServerWorker *sender, const QJsonObject &docObj)
     // 群组列表
     QJsonObject groupList;
     groupList["type"] = "groupList";
-    groupList["groupList"] = IDatabase::getInstance().getGroupList(sender->userID());
+    groupList["groupList"] =
+        IDatabase::getInstance().getGroupList(sender->userID());
     sender->sendJson(groupList);
     // 聊天记录
     QString lasttime = IDatabase::getInstance().getLastTime(sender->userID());
-    QJsonArray chatRecord2 = IDatabase::getInstance().getLastChatRecord(sender->userID(), lasttime);
+    QJsonArray chatRecord2 =
+        IDatabase::getInstance().getLastChatRecord(sender->userID(), lasttime);
     // 遍历
     for (int i = 0; i < chatRecord2.size(); i++)
     {
@@ -264,7 +286,8 @@ void ChatServer::jsonReceived(ServerWorker *sender, const QJsonObject &docObj)
       }
     }
   }
-  else if (typeVal.toString().compare("createGroup", Qt::CaseInsensitive) == 0)
+  else if (typeVal.toString().compare("createGroup", Qt::CaseInsensitive) ==
+           0)
   {
     const QJsonValue groupNameVal = docObj.value("text");
     if (groupNameVal.isNull() || !groupNameVal.isString())
@@ -278,7 +301,8 @@ void ChatServer::jsonReceived(ServerWorker *sender, const QJsonObject &docObj)
     QJsonObject group;
     // 发送groupList
     group["type"] = "groupList";
-    group["groupList"] = IDatabase::getInstance().getGroupList(sender->userID());
+    group["groupList"] =
+        IDatabase::getInstance().getGroupList(sender->userID());
     sender->sendJson(group);
   }
   else if (typeVal.toString().compare("addGroup", Qt::CaseInsensitive) == 0)
@@ -291,11 +315,13 @@ void ChatServer::jsonReceived(ServerWorker *sender, const QJsonObject &docObj)
     QJsonObject group;
     // 发送groupList
     group["type"] = "groupList";
-    group["groupList"] = IDatabase::getInstance().getGroupList(sender->userID());
+    group["groupList"] =
+        IDatabase::getInstance().getGroupList(sender->userID());
     sender->sendJson(group);
   }
   // getChatRecord
-  else if (typeVal.toString().compare("getChatRecord", Qt::CaseInsensitive) == 0)
+  else if (typeVal.toString().compare("getChatRecord", Qt::CaseInsensitive) ==
+           0)
   {
     const QJsonValue toVal = docObj.value("text");
     if (toVal.isNull() || !toVal.isString())
@@ -303,8 +329,86 @@ void ChatServer::jsonReceived(ServerWorker *sender, const QJsonObject &docObj)
     const QString to = toVal.toString();
     QJsonObject chatRecord;
     chatRecord["type"] = "friendChatRecord";
-    chatRecord["chatRecord"] = IDatabase::getInstance().getChatRecord(sender->userID(), IDatabase::getInstance().getID(to));
+    chatRecord["chatRecord"] = IDatabase::getInstance().getChatRecord(
+        sender->userID(), IDatabase::getInstance().getID(to));
     sender->sendJson(chatRecord);
+  }
+  // getGroupChatRecord
+  else if (typeVal.toString().compare("getGroupChatRecord",
+                                      Qt::CaseInsensitive) == 0)
+  {
+    const QJsonValue toVal = docObj.value("text");
+    if (toVal.isNull() || !toVal.isString())
+      return;
+    const QString to = toVal.toString();
+    QJsonObject chatRecord;
+    chatRecord["type"] = "friendChatRecord";
+    chatRecord["chatRecord"] = IDatabase::getInstance().getGroupChatRecord(to);
+    sender->sendJson(chatRecord);
+    // 发送成员列表
+    QJsonObject memberList;
+    memberList["type"] = "memberList";
+    QStringList memberlist = IDatabase::getInstance().getGroupMember(to);
+    // 将memberlist转为QJsonArray
+    QJsonArray memberArray;
+    for (int i = 0; i < memberlist.size(); i++)
+    {
+      memberArray.append(IDatabase::getInstance().getUserName(memberlist[i]));
+    }
+    memberList["memberList"] = memberArray;
+    sender->sendJson(memberList);
+  }
+  // invite
+  else if (typeVal.toString().compare("invite", Qt::CaseInsensitive) == 0)
+  {
+    const QJsonValue toVal = docObj.value("text");
+    if (toVal.isNull() || !toVal.isString())
+      return;
+    const QString to = toVal.toString();
+    const QJsonValue groupIDVal = docObj.value("to");
+    if (groupIDVal.isNull() || !groupIDVal.isString())
+      return;
+    const QString groupID = groupIDVal.toString();
+    IDatabase::getInstance().addFriend(IDatabase::getInstance().getID(to),
+                                       groupID, "1");
+    // 向所有群成员发送群成员列表
+    QStringList memberlist = IDatabase::getInstance().getGroupMember(groupID);
+    for (int i = 0; i < memberlist.size(); i++)
+    {
+      for (ServerWorker *worker : m_clients)
+      {
+        if (worker->userName().compare(
+                IDatabase::getInstance().getUserName(memberlist[i])) == 0)
+        {
+          QJsonObject memberList;
+          memberList["type"] = "memberList";
+          QStringList memberlist =
+              IDatabase::getInstance().getGroupMember(groupID);
+          // 将memberlist转为QJsonArray
+          QJsonArray memberArray;
+          for (int i = 0; i < memberlist.size(); i++)
+          {
+            memberArray.append(
+                IDatabase::getInstance().getUserName(memberlist[i]));
+          }
+          memberList["memberList"] = memberArray;
+          worker->sendJson(memberList);
+        }
+      }
+    }
+    // 向被邀请者发送groupList
+    for (ServerWorker *worker : m_clients)
+    {
+      if (worker->userName().compare(to) == 0)
+      {
+        QJsonObject group;
+        // 发送groupList
+        group["type"] = "groupList";
+        group["groupList"] =
+            IDatabase::getInstance().getGroupList(worker->userID());
+        worker->sendJson(group);
+      }
+    }
   }
 }
 

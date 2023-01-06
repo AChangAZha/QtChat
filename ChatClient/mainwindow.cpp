@@ -9,6 +9,7 @@
 #include <QJsonValue>
 #include <QMessageBox>
 #include <QUuid>
+#include <QTimer>
 
 #include "ui_mainwindow.h"
 
@@ -28,6 +29,12 @@ MainWindow::~MainWindow() { delete ui; }
 
 void MainWindow::on_loginButton_clicked()
 {
+  if (ui->serverEdit->text().isEmpty() || ui->usernameEdit->text().isEmpty() ||
+      ui->passwordEdit->text().isEmpty())
+  {
+    ui->msg->setText("请填写完整信息");
+    return;
+  }
   init = "login";
   m_chatClient->connectToServer(QHostAddress(ui->serverEdit->text()), 1967);
 }
@@ -49,6 +56,29 @@ void MainWindow::on_logoutButton_clicked()
   m_chatClient->disconnectFromHost();
   ui->stackedWidget->setCurrentWidget(ui->loginPage);
   ui->userListWidget->clear();
+  if (timer != nullptr)
+  {
+    timer->stop();
+    delete timer;
+    timer = nullptr;
+    ui->addBtn->setText("添加好友/群组");
+    ui->addBtn->setIcon(QIcon(":/new/prefix1/img/add.png"));
+  }
+  // 遍历ui->friendList
+  for (int i = 0; i < ui->friendList->count(); i++)
+  {
+    // 获取data中的Timer
+    QVariant var = ui->friendList->item(i)->data(Qt::UserRole);
+    if (var.isValid())
+    {
+      // 停止Timer
+      QTimer *timer = var.value<QTimer *>();
+      timer->stop();
+      delete timer;
+      timer = nullptr;
+    }
+  }
+  ui->friendList->clear();
 }
 
 void MainWindow::connectedServer()
@@ -111,7 +141,9 @@ void MainWindow::saveFile(QString text, QString sender)
   file.open(QIODevice::WriteOnly);
   file.write(QByteArray::fromBase64(base64.toUtf8()));
   file.close();
-  QMessageBox::information(this, "提示", sender + "给你发送了一个文件，已保存到" + path + "/file/" + str);
+  QMessageBox::information(
+      this, "提示",
+      sender + "给你发送了一个文件，已保存到" + path + "/file/" + str);
 }
 void MainWindow::jsonReceived(const QJsonObject &docObj)
 {
@@ -167,7 +199,8 @@ void MainWindow::jsonReceived(const QJsonObject &docObj)
         // 提取括号前的内容
         QString name = item->text().split("(")[0];
         // 如果好友列表中有sender
-        if (name.compare(senderVal.toString()) == 0)
+        if (name.compare(senderVal.toString()) == 0 &&
+            friendVal.toString().compare(ui->usernameEdit->text()) == 0)
         {
           // 将“线]-”后的数字加1，如果没找到，则在“线]”后加上“-1”
           QString text = item->text();
@@ -181,14 +214,65 @@ void MainWindow::jsonReceived(const QJsonObject &docObj)
           else
           {
             text.replace("]", "]-1");
+            // 将字体设置为蓝色
+            // 设置Timer，让字体闪烁，把Timer绑定到item上
+            QTimer *timer = new QTimer(this);
+            timer->setInterval(500);
+            timer->setSingleShot(false);
+            timer->start();
+            connect(timer, &QTimer::timeout, [=]()
+                    {
+            if (item->textColor() == QColor(0, 0, 255))
+              item->setTextColor(QColor(0, 0, 0));
+            else
+              item->setTextColor(QColor(0, 0, 255)); });
+            item->setData(Qt::UserRole, QVariant::fromValue(timer));
           }
           item->setText(text);
-          // 将字体设置为绿色
-          item->setForeground(QBrush(QColor(0, 255, 0)));
           // 置顶
           ui->friendList->takeItem(i);
           ui->friendList->insertItem(0, item);
-          break;
+          return;
+        }
+      }
+      // 遍历群组列表
+      for (int i = 0; i < ui->groupList->count(); i++)
+      {
+        QListWidgetItem *item = ui->groupList->item(i);
+        // 提取括号内的内容
+        QString name = item->text().split("(")[1].split(")")[0];
+        if (name.compare(friendVal.toString()) == 0)
+        {
+          // 将“-”后的数字加1，如果没找到，则在最后加上“-1”
+          QString text = item->text();
+          int index = text.indexOf("-");
+          if (index != -1)
+          {
+            int num = text.mid(index + 1).toInt();
+            text.replace(index + 1, text.length() - index - 1,
+                         QString::number(num + 1));
+          }
+          else
+          {
+            text.append("-1");
+            // 设置Timer，让字体闪烁，把Timer绑定到item上
+            QTimer *timer = new QTimer(this);
+            timer->setInterval(500);
+            timer->setSingleShot(false);
+            timer->start();
+            connect(timer, &QTimer::timeout, [=]()
+                    {
+            if (item->textColor() == QColor(0, 0, 255))
+              item->setTextColor(QColor(0, 0, 0));
+            else
+              item->setTextColor(QColor(0, 0, 255)); });
+            item->setData(Qt::UserRole, QVariant::fromValue(timer));
+          }
+          item->setText(text);
+          // 置顶
+          ui->groupList->takeItem(i);
+          ui->groupList->insertItem(0, item);
+          return;
         }
       }
     }
@@ -215,6 +299,8 @@ void MainWindow::jsonReceived(const QJsonObject &docObj)
     if (userlistVal.isNull() || !userlistVal.isArray())
       return;
     userListReceived(userlistVal.toVariant().toStringList());
+    ui->welcome->setText("欢迎你，" + ui->usernameEdit->text());
+    ui->passwordEdit->setText("");
     ui->stackedWidget->setCurrentWidget(ui->homePage);
   }
   else if (typeVal.toString().compare("chatRecord", Qt::CaseInsensitive) ==
@@ -260,6 +346,10 @@ void MainWindow::jsonReceived(const QJsonObject &docObj)
       ui->msg->setText(msgVal.toString());
       ui->stackedWidget->setCurrentWidget(ui->loginPage);
       ui->usernameEdit->setText(ui->username->text());
+      ui->errMsg->setText("欢迎使用");
+      ui->username->setText("");
+      ui->password->setText("");
+      ui->rePassword->setText("");
     }
     else
     {
@@ -288,6 +378,23 @@ void MainWindow::jsonReceived(const QJsonObject &docObj)
   else if (typeVal.toString().compare("newApply", Qt::CaseInsensitive) == 0)
   {
     ui->addBtn->setText("新好友");
+    // 按钮闪烁
+    timer = new QTimer(this);
+    connect(timer, &QTimer::timeout, this, [=]()
+            {
+      if (ui->addBtn->text() == "新好友")
+      {
+        ui->addBtn->setText("");
+        //隐藏icon
+        ui->addBtn->setIcon(QIcon());
+      }
+      else
+      {
+        ui->addBtn->setText("新好友");
+        //显示icon
+        ui->addBtn->setIcon(QIcon(":/new/prefix1/img/add.png"));
+      } });
+    timer->start(500);
     const QJsonValue messageVal = docObj.value("message");
     if (messageVal.isNull() || !messageVal.isString())
       return;
@@ -358,6 +465,15 @@ void MainWindow::jsonReceived(const QJsonObject &docObj)
                                   .arg(textVal.toString()));
       }
     }
+  }
+  // memberList
+  else if (typeVal.toString().compare("memberList", Qt::CaseInsensitive) == 0)
+  {
+    const QJsonValue memberListVal = docObj.value("memberList");
+    if (memberListVal.isNull() || !memberListVal.isArray())
+      return;
+    ui->memberList->clear();
+    ui->memberList->addItems(memberListVal.toVariant().toStringList());
   }
 }
 
@@ -443,6 +559,17 @@ void MainWindow::on_userListWidget_currentTextChanged(
 
 void MainWindow::on_registerBtn_clicked()
 {
+  if (ui->username->text().isEmpty() || ui->password->text().isEmpty() ||
+      ui->rePassword->text().isEmpty())
+  {
+    ui->errMsg->setText("请填写完整信息");
+    return;
+  }
+  if (ui->password->text().compare(ui->rePassword->text()) != 0)
+  {
+    ui->errMsg->setText("两次输入密码不一致");
+    return;
+  }
   init = "register";
   m_chatClient->connectToServer(QHostAddress(ui->serverEdit->text()), 1967);
 }
@@ -465,7 +592,14 @@ void MainWindow::on_back_clicked()
 void MainWindow::on_addBtn_clicked()
 {
   ui->stackedWidget->setCurrentWidget(ui->addPage);
-  ui->addBtn->setText("添加好友/群组");
+  if (timer != nullptr)
+  {
+    timer->stop();
+    delete timer;
+    timer = nullptr;
+    ui->addBtn->setText("添加好友/群组");
+    ui->addBtn->setIcon(QIcon(":/new/prefix1/img/add.png"));
+  }
 }
 
 void MainWindow::on_search_clicked()
@@ -506,6 +640,8 @@ void MainWindow::on_resList_itemDoubleClicked(QListWidgetItem *item)
     id.replace("群组", "");
     // 发送添加群组请求
     m_chatClient->sendMessage(id, "addGroup");
+    QMessageBox::information(this, "提示",
+                             "您已加入群聊" + username + "(" + id + ")");
     return;
   }
   // 遍历好友列表
@@ -621,8 +757,19 @@ void MainWindow::on_friendList_itemClicked(QListWidgetItem *item)
     ui->friendStatus->setText("离线");
   }
   // 将item的样式恢复
-  item->setBackgroundColor(QColor(255, 255, 255));
   item->setTextColor(QColor(0, 0, 0));
+  // 从item的data中获取Timer，停止计时器
+  QTimer *timer = item->data(Qt::UserRole).value<QTimer *>();
+  // 如果timer不为空
+  if (timer != nullptr)
+  {
+    timer->stop();
+    // 从data中删除timer
+    item->setData(Qt::UserRole, QVariant());
+    // 删除timer
+    delete timer;
+  }
+
   // 将“线]-”后的数字删除
   QString text = item->text();
   int index = text.indexOf("]-");
@@ -634,6 +781,10 @@ void MainWindow::on_friendList_itemClicked(QListWidgetItem *item)
   // 请求好友聊天记录
   m_chatClient->sendMessage(username, "getChatRecord");
   ui->friendMsg->clear();
+  // 隐藏
+  ui->memberList->hide();
+  ui->invite->hide();
+  ui->fileBtn->show();
   ui->stackedWidget->setCurrentWidget(ui->friendChatPage);
 }
 
@@ -645,7 +796,15 @@ void MainWindow::on_friendSend_clicked()
   {
     return;
   }
-  m_chatClient->sendMessage(send, "message", username);
+  // 如果memberList为隐藏状态
+  if (ui->memberList->isHidden())
+  {
+    m_chatClient->sendMessage(send, "message", username);
+  }
+  else
+  {
+    m_chatClient->sendMessage(send, "group", username);
+  }
   ui->friendEdit->clear();
 }
 
@@ -678,7 +837,16 @@ void MainWindow::on_friendImg_clicked()
   QString base64 = data.toBase64();
   base64 = "|" + base64;
   // 发送消息
-  m_chatClient->sendMessage(base64, "message", username);
+  // 如果当前页是chatPage
+  if (ui->stackedWidget->currentWidget() == ui->chatPage)
+  {
+    m_chatClient->sendMessage(base64, "message");
+    return;
+  }
+  if (ui->memberList->isHidden())
+    m_chatClient->sendMessage(base64, "message", username);
+  else
+    m_chatClient->sendMessage(base64, "group", username);
 }
 
 void MainWindow::on_fileBtn_clicked()
@@ -695,8 +863,8 @@ void MainWindow::on_fileBtn_clicked()
     return;
   }
   // 弹出窗口，选择文件
-  QString fileName = QFileDialog::getOpenFileName(
-      this, tr("选择文件"), "", tr("file (*.*)"));
+  QString fileName =
+      QFileDialog::getOpenFileName(this, tr("选择文件"), "", tr("file (*.*)"));
   if (fileName == "")
   {
     return;
@@ -719,4 +887,97 @@ void MainWindow::on_fileBtn_clicked()
   // 发送消息
   m_chatClient->sendMessage(base64, "message", username);
   m_chatClient->sendMessage("[文件]" + fileName, "message", username);
+}
+
+void MainWindow::on_groupList_itemClicked(QListWidgetItem *item)
+{
+  QString res = item->text();
+  if (res == "")
+  {
+    return;
+  }
+  // 提取res中"("之前的内容
+  int pos = res.indexOf("(");
+  if (pos == -1)
+  {
+    return;
+  }
+  QString groupname = res.left(pos);
+  ui->friendStatus->setText(groupname);
+  // 提取res中"("和")"之间的内容
+  int end = res.indexOf(")");
+  if (end == -1)
+  {
+    return;
+  }
+  ui->friendName->setText(res.mid(pos + 1, end - pos - 1));
+  // 将item的样式恢复
+  item->setTextColor(QColor(0, 0, 0));
+  // 从item的data中获取Timer，停止计时器
+  QTimer *timer = item->data(Qt::UserRole).value<QTimer *>();
+  // 如果timer不为空
+  if (timer != nullptr)
+  {
+    timer->stop();
+    // 从data中删除timer
+    item->setData(Qt::UserRole, QVariant());
+    // 删除timer
+    delete timer;
+  }
+  QString text = item->text();
+  int index = text.indexOf("-");
+  if (index != -1)
+  {
+    text = text.left(index);
+  }
+  item->setText(text);
+  // 请求群聊天记录
+  m_chatClient->sendMessage(res.mid(pos + 1, end - pos - 1),
+                            "getGroupChatRecord");
+  ui->friendMsg->clear();
+  ui->memberList->show();
+  ui->fileBtn->hide();
+  ui->invite->show();
+  ui->stackedWidget->setCurrentWidget(ui->friendChatPage);
+}
+
+void MainWindow::on_invite_clicked()
+{
+  // 弹出窗口，从好友列表中选择好友
+  QString username = ui->friendName->text();
+  if (username == "")
+  {
+    return;
+  }
+  // 弹出窗口，从Combo Box选择好友
+  QStringList list;
+  for (int i = 0; i < ui->friendList->count(); i++)
+  {
+    QListWidgetItem *item = ui->friendList->item(i);
+    QString text = item->text();
+    int index = text.indexOf("(");
+    if (index != -1)
+    {
+      text = text.left(index);
+    }
+    list << text;
+  }
+  // 如果好友列表为空
+  if (list.isEmpty())
+  {
+    QMessageBox::information(this, "提示", "好友列表为空");
+    return;
+  }
+  bool ok;
+  QString res =
+      QInputDialog::getItem(this, "邀请好友", "好友列表", list, 0, false, &ok);
+  if (ok && !res.isEmpty())
+  {
+    m_chatClient->sendMessage(res, "invite", username);
+  }
+}
+
+void MainWindow::on_pushButton_4_clicked()
+{
+  on_friendImg_clicked();
 }

@@ -32,6 +32,8 @@ public:
   QJsonArray getFriendList(QString id);
   QJsonArray getGroupList(QString id);
   void updateLastTime(QString userName);
+  QStringList getGroupMember(QString id);
+  QJsonArray getGroupChatRecord(QString id);
 
 private:
   explicit IDatabase(QObject *parent = nullptr);

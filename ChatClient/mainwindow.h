@@ -71,6 +71,12 @@ private slots:
 
   void on_fileBtn_clicked();
 
+  void on_groupList_itemClicked(QListWidgetItem *item);
+
+  void on_invite_clicked();
+
+  void on_pushButton_4_clicked();
+
 private:
   Ui::MainWindow *ui;
   ChatClient *m_chatClient;
@@ -78,5 +84,6 @@ private:
   QString init = "login";
   QString img(QString text);
   void saveFile(QString text, QString sender);
+  QTimer *timer;
 };
 #endif // MAINWINDOW_H
